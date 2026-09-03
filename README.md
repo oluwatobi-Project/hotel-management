@@ -16,17 +16,23 @@ A full-stack hotel management system built with **Laravel 12**, **PHP 8.2**, and
   - View payment history and outstanding balance
   - Cancel a reservation
   - Send front-desk requests (housekeeping, food, amenities, maintenance) once checked in
+  - **Order from the hotel restaurant** once checked in (browse menu by category, quantities, kitchen notes)
+  - **Request laundry service** once checked in (wash / iron / wash & iron / dry-clean)
 - Contact page with message form
 - Email confirmations and SMS notifications (log-based SMS driver)
 
 ### Admin / Staff Front Desk (`/login`)
 - Dashboard with occupancy stats, weekly revenue chart, and room-type breakdown
 - Room types & rooms management (status: available / occupied / maintenance / cleaning)
+  - AJAX-driven CRUD with inline success/error alerts (no page reloads or insecure-submit prompts)
+  - **Amenities**: manage a reusable library of amenities (icon + description) and attach them to each room type
 - Guest management
 - Booking management: create, edit, cancel, check-in, check-out with payment collection
 - Date-overlap conflict detection to prevent double-booking
 - Payments with receipts and refunds
 - In-room service requests queue (pending / in progress / completed)
+- **Restaurant**: manage the menu (name, category, price, availability toggle) and run the live order queue with status updates (pending / preparing / served / cancelled)
+- **Laundry**: housekeeping queue for guest laundry requests with status updates and estimated cost billing (pending / in progress / completed / cancelled)
 - Notifications center (in-app + email)
 - SMS log viewer
 - Settings panel (hotel name, currency, contact info, SMTP)
@@ -107,7 +113,7 @@ php artisan bookings:release-unpaid
 | Admin | `admin@hotel.local`   | `password` |
 | Staff | `staff@hotel.local`   | `password` |
 
-Seed data includes 3 room types, 12 rooms, 6 guests, and sample bookings/payments/requests.
+Seed data includes 3 room types, 12 rooms, 6 guests, 12 amenities, 14 restaurant menu items, and sample bookings/payments/requests/orders.
 
 ## Key Routes
 
@@ -131,6 +137,10 @@ Seed data includes 3 room types, 12 rooms, 6 guests, and sample bookings/payment
 | `/bookings` | Bookings |
 | `/payments` | Payments |
 | `/requests` | Room requests |
+| `/restaurant/menu` | Restaurant menu |
+| `/restaurant/orders` | Restaurant order queue |
+| `/laundry` | Laundry requests |
+| `/amenities` | Amenities |
 | `/notifications` | Notifications |
 | `/settings` | Settings (admin) |
 | `/users` | Users (admin) |

@@ -85,6 +85,8 @@
         <a class="nav-link {{ request()->routeIs('room-types.*') ? 'active' : '' }}" href="{{ route('room-types.index') }}"><i class="bi bi-layers"></i> Room Types</a>
         <a class="nav-link {{ request()->routeIs('guests.*') ? 'active' : '' }}" href="{{ route('guests.index') }}"><i class="bi bi-people"></i> Guests</a>
         <a class="nav-link {{ request()->routeIs('requests.*') ? 'active' : '' }}" href="{{ route('requests.index') }}"><i class="bi bi-concierge-bell"></i> Room Requests</a>
+        <a class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}" href="{{ route('restaurant.menu') }}"><i class="bi bi-cup-hot"></i> Restaurant</a>
+        <a class="nav-link {{ request()->routeIs('laundry.*') ? 'active' : '' }}" href="{{ route('laundry.index') }}"><i class="bi bi-water"></i> Laundry</a>
         <a class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="bi bi-credit-card"></i> Payments</a>
         @if(auth()->user()->isAdmin())
             <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-badge"></i> Staff</a>

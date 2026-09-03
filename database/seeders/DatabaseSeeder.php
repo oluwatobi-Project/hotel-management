@@ -2,10 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Amenity;
 use App\Models\AppNotification;
 use App\Models\Booking;
 use App\Models\Guest;
 use App\Models\Payment;
+use App\Models\RestaurantMenuItem;
 use App\Models\Room;
 use App\Models\RoomRequest;
 use App\Models\RoomType;
@@ -72,6 +74,46 @@ class DatabaseSeeder extends Seeder
             'amenities' => 'WiFi, 65" TV, Living Room, Jacuzzi, Ocean View',
             'description' => 'Luxurious suite with separate living room.',
         ]);
+
+        $amenityData = [
+            ['Free Wi-Fi', 'bi-wifi', 'High-speed internet access'],
+            ['Air Conditioning', 'bi-snow', 'Individually controlled climate'],
+            ['Smart TV', 'bi-tv', '55-inch smart television'],
+            ['Mini Bar', 'bi-cup-straw', 'Refreshing beverages and snacks'],
+            ['Bathtub', 'bi-droplet-half', 'Deep soaking bathtub'],
+            ['Room Service', 'bi-bell', '24-hour in-room dining'],
+            ['Safe Box', 'bi-shield-lock', 'In-room digital safe'],
+            ['Ocean View', 'bi-water', 'Breathtaking ocean views'],
+            ['Work Desk', 'bi-laptop', 'Ergonomic workspace'],
+            ['Jacuzzi', 'bi-wind', 'Private jacuzzi tub'],
+            ['Coffee Machine', 'bi-cup-hot', 'Espresso and coffee maker'],
+            ['Balcony', 'bi-door-open', 'Private balcony seating'],
+        ];
+        $amenities = collect($amenityData)->map(fn ($a) => Amenity::create(['name' => $a[0], 'icon' => $a[1], 'description' => $a[2]]));
+
+        $standard->amenityItems()->sync($amenities->whereIn('name', ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Work Desk'])->pluck('id'));
+        $deluxe->amenityItems()->sync($amenities->whereIn('name', ['Free Wi-Fi', 'Air Conditioning', 'Smart TV', 'Mini Bar', 'Bathtub', 'Room Service', 'Safe Box', 'Ocean View'])->pluck('id'));
+        $suite->amenityItems()->sync($amenities->pluck('id'));
+
+        $menuData = [
+            ['Continental Breakfast', 'Breakfast', 12.50, 'Pastries, fruit, yogurt and coffee.'],
+            ['Full English Breakfast', 'Breakfast', 18.00, 'Eggs, sausage, bacon, beans, toast.'],
+            ['Pancakes with Maple Syrup', 'Breakfast', 11.00, 'Fluffy pancakes with butter and syrup.'],
+            ['Club Sandwich', 'Lunch', 14.00, 'Chicken, bacon, lettuce, tomato, fries.'],
+            ['Caesar Salad', 'Lunch', 12.00, 'Romaine, parmesan, croutons, grilled chicken.'],
+            ['Grilled Salmon', 'Dinner', 28.00, 'With seasonal vegetables and lemon butter.'],
+            ['Ribeye Steak', 'Dinner', 34.00, 'Grilled to order with mashed potatoes.'],
+            ['Margherita Pizza', 'Dinner', 16.50, 'Tomato, mozzarella, fresh basil.'],
+            ['Vegetable Stir Fry', 'Dinner', 15.00, 'Wok-fried vegetables with rice.'],
+            ['Chocolate Lava Cake', 'Dessert', 9.00, 'Warm cake with molten center.'],
+            ['Cheesecake', 'Dessert', 8.50, 'Creamy classic New York style.'],
+            ['Fresh Orange Juice', 'Drinks', 5.00, 'Freshly squeezed.'],
+            ['Mineral Water', 'Drinks', 2.50, 'Still or sparkling.'],
+            ['House Red Wine', 'Drinks', 9.00, 'Glass of house selection.'],
+        ];
+        foreach ($menuData as [$name, $category, $price, $description]) {
+            RestaurantMenuItem::create(['name' => $name, 'category' => $category, 'price' => $price, 'description' => $description]);
+        }
 
         $roomPlan = [
             ['101', 1, $standard], ['102', 1, $standard], ['103', 1, $standard],
@@ -190,6 +232,29 @@ class DatabaseSeeder extends Seeder
             'booking_id' => $bookings[1]->id, 'to_number' => $guests[1]->phone,
             'message' => 'Welcome, Li Na! You have checked in to room 202. Enjoy your stay.',
             'provider' => 'log', 'status' => 'sent',
+        ]);
+
+        $pancakes = RestaurantMenuItem::where('name', 'Pancakes with Maple Syrup')->first();
+        $coffee = RestaurantMenuItem::where('name', 'Continental Breakfast')->first();
+
+        if ($pancakes && $coffee) {
+            $demoOrder = \App\Models\RestaurantOrder::create([
+                'order_no' => \App\Models\RestaurantOrder::generateOrderNo(),
+                'booking_id' => $bookings[1]->id,
+                'guest_id' => $guests[1]->id,
+                'room_id' => $rooms['202']->id,
+                'status' => 'served',
+                'total' => 36.00,
+                'notes' => 'Breakfast in room 202. Sample order.',
+            ]);
+            \App\Models\RestaurantOrderItem::create(['restaurant_order_id' => $demoOrder->id, 'restaurant_menu_item_id' => $pancakes->id, 'quantity' => 1, 'unit_price' => 11.00]);
+            \App\Models\RestaurantOrderItem::create(['restaurant_order_id' => $demoOrder->id, 'restaurant_menu_item_id' => $coffee->id, 'quantity' => 2, 'unit_price' => 12.25]);
+        }
+
+        \App\Models\LaundryRequest::create([
+            'booking_id' => $bookings[2]->id, 'guest_id' => $guests[2]->id, 'room_id' => $rooms['401']->id,
+            'service_type' => 'wash_iron', 'item_description' => '2 shirts, 1 trousers, 1 dress',
+            'quantity' => 4, 'estimated_cost' => 18.00, 'status' => 'in_progress',
         ]);
     }
 }

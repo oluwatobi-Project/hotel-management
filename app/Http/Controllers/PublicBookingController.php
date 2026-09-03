@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AppNotification;
 use App\Models\Booking;
 use App\Models\Guest;
+use App\Models\LaundryRequest;
 use App\Models\Payment;
+use App\Models\RestaurantMenuItem;
+use App\Models\RestaurantOrder;
+use App\Models\RestaurantOrderItem;
 use App\Models\Room;
 use App\Models\RoomRequest;
 use App\Services\BookingNotifier;
@@ -112,7 +116,104 @@ class PublicBookingController extends Controller
         $booking->load(['guest', 'room.roomType', 'payments', 'requests', 'requests.room']);
         $this->assertVerified($booking);
 
-        return view('site.portal', compact('booking'));
+        $menuItems = RestaurantMenuItem::where('is_available', true)->orderBy('category')->orderBy('name')->get();
+        $menuCategories = $menuItems->groupBy('category');
+
+        return view('site.portal', compact('booking', 'menuItems', 'menuCategories'));
+    }
+
+    public function restaurantOrder(Request $request, Booking $booking)
+    {
+        $booking->load(['guest', 'room']);
+        $this->assertVerified($booking);
+
+        if ($booking->status !== 'checked_in') {
+            return back()->with('error', 'Restaurant ordering is available once you have checked in.');
+        }
+
+        $data = $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['required', 'exists:restaurant_menu_items,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $lines = collect($data['items'])->filter(fn ($i) => ($i['quantity'] ?? 0) > 0);
+
+        if ($lines->isEmpty()) {
+            throw ValidationException::withMessages(['items' => 'Add at least one menu item to your order.']);
+        }
+
+        $prices = RestaurantMenuItem::whereIn('id', $lines->pluck('id'))->pluck('price', 'id');
+        $total = 0;
+        foreach ($lines as $line) {
+            $total += (float) $prices[$line['id']] * $line['quantity'];
+        }
+
+        $order = RestaurantOrder::create([
+            'order_no' => RestaurantOrder::generateOrderNo(),
+            'booking_id' => $booking->id,
+            'guest_id' => $booking->guest_id,
+            'room_id' => $booking->room_id,
+            'status' => 'pending',
+            'total' => round($total, 2),
+            'notes' => trim(($data['notes'] ?? '').' | Placed online by guest.'),
+        ]);
+
+        foreach ($lines as $line) {
+            RestaurantOrderItem::create([
+                'restaurant_order_id' => $order->id,
+                'restaurant_menu_item_id' => $line['id'],
+                'quantity' => $line['quantity'],
+                'unit_price' => $prices[$line['id']],
+            ]);
+        }
+
+        AppNotification::sendToAll(
+            'New restaurant order from guest',
+            sprintf('Order %s — Room %s (%s) — %s', $order->order_no, $booking->room->room_number, $booking->guest->name, $order->itemsCountLabel()),
+            'info',
+            route('restaurant.orders.index', ['status' => 'pending'])
+        );
+
+        return redirect()->route('site.booking.portal', $booking->id)
+            ->with('success', "Order {$order->order_no} placed! Our kitchen is on it.");
+    }
+
+    public function laundryStore(Request $request, Booking $booking)
+    {
+        $booking->load(['guest', 'room']);
+        $this->assertVerified($booking);
+
+        if ($booking->status !== 'checked_in') {
+            return back()->with('error', 'Laundry service is available once you have checked in.');
+        }
+
+        $data = $request->validate([
+            'service_type' => ['required', 'in:'.implode(',', LaundryRequest::SERVICE_TYPES)],
+            'item_description' => ['required', 'string', 'max:500'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:200'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $laundry = LaundryRequest::create(array_merge($data, [
+            'booking_id' => $booking->id,
+            'guest_id' => $booking->guest_id,
+            'room_id' => $booking->room_id,
+            'status' => 'pending',
+            'estimated_cost' => 0,
+            'notes' => trim(($data['notes'] ?? '').' | Submitted online by guest.'),
+        ]));
+
+        AppNotification::sendToAll(
+            'New laundry request from guest',
+            sprintf('Room %s (%s) — %s x%d', $booking->room->room_number, $booking->guest->name, $laundry->item_description, $laundry->quantity),
+            'info',
+            route('laundry.index', ['status' => 'pending'])
+        );
+
+        return redirect()->route('site.booking.portal', $booking->id)
+            ->with('success', 'Your laundry request has been sent to housekeeping.');
     }
 
     public function pay(Request $request, Booking $booking, BookingNotifier $notifier)

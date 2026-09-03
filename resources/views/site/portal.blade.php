@@ -108,6 +108,67 @@
                     @endif
                 </div>
                 @endif
+
+                @if($booking->status === 'checked_in' && $menuItems->isNotEmpty())
+                <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-cup-hot me-2 text-gold"></i>Order from the Restaurant</h6>
+                    <form action="{{ route('site.booking.restaurant-order', $booking->id) }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Choose your dishes</label>
+                            @foreach($menuCategories as $category => $items)
+                                <div class="fw-semibold small text-muted text-uppercase mt-2">{{ $category }}</div>
+                                @foreach($items as $item)
+                                    <label class="d-flex justify-content-between align-items-center border rounded-2 px-3 py-2 mt-1">
+                                        <span class="small">{{ $item->name }} <span class="text-muted">— {{ $settings['currency'] ?? '$' }}{{ number_format($item->price, 2) }}</span></span>
+                                        <input type="number" name="items[{{ $item->id }}][id]" value="{{ $item->id }}" class="d-none">
+                                        <input type="number" name="items[{{ $item->id }}][quantity]" class="form-control form-control-sm" style="width:70px" min="0" max="50" value="0">
+                                    </label>
+                                @endforeach
+                            @endforeach
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Notes for the kitchen</label>
+                            <textarea name="notes" rows="2" class="form-control" placeholder="Allergies, preferences..."></textarea>
+                        </div>
+                        <button class="btn btn-gold px-4" type="submit"><i class="bi bi-bag-check me-2"></i>Place Order</button>
+                    </form>
+                </div>
+                @endif
+
+                @if($booking->status === 'checked_in')
+                <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-water me-2 text-gold"></i>Laundry Service</h6>
+                    <form action="{{ route('site.booking.laundry', $booking->id) }}" method="POST">
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Service Type</label>
+                                <select name="service_type" class="form-select" required>
+                                    @foreach(\App\Models\LaundryRequest::SERVICE_TYPES as $serviceType)
+                                        <option value="{{ $serviceType }}">{{ ucwords(str_replace('_', ' ', $serviceType)) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Quantity</label>
+                                <input type="number" name="quantity" class="form-control" value="1" min="1" max="200" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Items</label>
+                                <input type="text" name="item_description" class="form-control" placeholder="e.g. 2 shirts, 1 pair of trousers" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Notes</label>
+                                <textarea name="notes" rows="2" class="form-control" placeholder="Stains, special care..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-gold px-4" type="submit"><i class="bi bi-send me-2"></i>Send Laundry Request</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                @endif
             </div>
 
             <div class="col-lg-4">

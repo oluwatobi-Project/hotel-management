@@ -1,13 +1,17 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuestController;
+use App\Http\Controllers\LaundryController;
+use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\PublicSiteController;
+use App\Http\Controllers\RestaurantOrderController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\RoomRequestController;
 use App\Http\Controllers\RoomTypeController;
@@ -33,6 +37,8 @@ Route::get('/my-booking/{booking}', [PublicBookingController::class, 'portal'])-
 Route::post('/my-booking/{booking}/pay', [PublicBookingController::class, 'pay'])->name('site.booking.pay');
 Route::post('/my-booking/{booking}/cancel', [PublicBookingController::class, 'cancel'])->name('site.booking.cancel');
 Route::post('/my-booking/{booking}/request', [PublicBookingController::class, 'requestStore'])->name('site.booking.request');
+Route::post('/my-booking/{booking}/restaurant-order', [PublicBookingController::class, 'restaurantOrder'])->name('site.booking.restaurant-order');
+Route::post('/my-booking/{booking}/laundry', [PublicBookingController::class, 'laundryStore'])->name('site.booking.laundry');
 
 // ---------- Admin login ----------
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -86,6 +92,27 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 
     Route::get('/sms-logs', [SmsLogController::class, 'index'])->name('sms-logs.index');
+
+    Route::get('/amenities', [AmenityController::class, 'index'])->name('amenities.index');
+    Route::post('/amenities', [AmenityController::class, 'store'])->name('amenities.store');
+    Route::put('/amenities/{amenity}', [AmenityController::class, 'update'])->name('amenities.update');
+    Route::delete('/amenities/{amenity}', [AmenityController::class, 'destroy'])->name('amenities.destroy');
+
+    Route::get('/restaurant/menu', [MenuItemController::class, 'index'])->name('restaurant.menu');
+    Route::post('/restaurant/menu', [MenuItemController::class, 'store'])->name('restaurant.menu.store');
+    Route::put('/restaurant/menu/{menuItem}', [MenuItemController::class, 'update'])->name('restaurant.menu.update');
+    Route::delete('/restaurant/menu/{menuItem}', [MenuItemController::class, 'destroy'])->name('restaurant.menu.destroy');
+    Route::post('/restaurant/menu/{menuItem}/toggle', [MenuItemController::class, 'toggleAvailability'])->name('restaurant.menu.toggle');
+
+    Route::get('/restaurant/orders', [RestaurantOrderController::class, 'index'])->name('restaurant.orders.index');
+    Route::post('/restaurant/orders', [RestaurantOrderController::class, 'store'])->name('restaurant.orders.store');
+    Route::post('/restaurant/orders/{order}/status', [RestaurantOrderController::class, 'setStatus'])->name('restaurant.orders.status');
+    Route::delete('/restaurant/orders/{order}', [RestaurantOrderController::class, 'destroy'])->name('restaurant.orders.destroy');
+
+    Route::get('/laundry', [LaundryController::class, 'index'])->name('laundry.index');
+    Route::post('/laundry', [LaundryController::class, 'store'])->name('laundry.store');
+    Route::post('/laundry/{laundry}/status', [LaundryController::class, 'setStatus'])->name('laundry.status');
+    Route::delete('/laundry/{laundry}', [LaundryController::class, 'destroy'])->name('laundry.destroy');
 
     Route::middleware('admin')->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
