@@ -11,6 +11,7 @@ use App\Models\RestaurantMenuItem;
 use App\Models\Room;
 use App\Models\RoomRequest;
 use App\Models\RoomType;
+use App\Models\Role;
 use App\Models\Setting;
 use App\Models\SmsLog;
 use App\Models\User;
@@ -40,6 +41,46 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        $frontDeskRole = Role::firstOrCreate(
+            ['slug' => 'front-desk'],
+            [
+                'name' => 'Front Desk',
+                'description' => 'Handles bookings, check-ins, guests and payments.',
+                'modules' => ['bookings', 'guests', 'rooms', 'payments'],
+            ]
+        );
+
+        Role::firstOrCreate(
+            ['slug' => 'housekeeping'],
+            [
+                'name' => 'Housekeeping',
+                'description' => 'Manages room requests and laundry service.',
+                'modules' => ['requests', 'laundry', 'rooms'],
+            ]
+        );
+
+        Role::firstOrCreate(
+            ['slug' => 'restaurant'],
+            [
+                'name' => 'Restaurant',
+                'description' => 'Runs the restaurant menu and order queue.',
+                'modules' => ['restaurant', 'laundry'],
+            ]
+        );
+
+        Role::firstOrCreate(
+            ['slug' => 'accountant'],
+            [
+                'name' => 'Accountant',
+                'description' => 'Handles payments and financial records.',
+                'modules' => ['payments', 'bookings', 'sms-logs'],
+            ]
+        );
+
+        if (! $staff->accessRole) {
+            $staff->update(['role_id' => $frontDeskRole->id]);
+        }
 
         $settings = [
             'hotel_name' => 'Grand Horizon Hotel',

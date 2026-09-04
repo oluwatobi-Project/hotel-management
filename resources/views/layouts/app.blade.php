@@ -79,22 +79,56 @@
         </div>
     </div>
     <div class="mt-2">
-        <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
-        <a class="nav-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}" href="{{ route('bookings.index') }}"><i class="bi bi-calendar3"></i> Bookings</a>
-        <a class="nav-link {{ request()->routeIs('rooms.*') ? 'active' : '' }}" href="{{ route('rooms.index') }}"><i class="bi bi-door-open"></i> Rooms</a>
-        <a class="nav-link {{ request()->routeIs('room-types.*') ? 'active' : '' }}" href="{{ route('room-types.index') }}"><i class="bi bi-layers"></i> Room Types</a>
-        <a class="nav-link {{ request()->routeIs('guests.*') ? 'active' : '' }}" href="{{ route('guests.index') }}"><i class="bi bi-people"></i> Guests</a>
-        <a class="nav-link {{ request()->routeIs('requests.*') ? 'active' : '' }}" href="{{ route('requests.index') }}"><i class="bi bi-concierge-bell"></i> Room Requests</a>
-        <a class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}" href="{{ route('restaurant.menu') }}"><i class="bi bi-cup-hot"></i> Restaurant</a>
-        <a class="nav-link {{ request()->routeIs('laundry.*') ? 'active' : '' }}" href="{{ route('laundry.index') }}"><i class="bi bi-water"></i> Laundry</a>
-        <a class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="bi bi-credit-card"></i> Payments</a>
-        @if(auth()->user()->isAdmin())
-            <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-badge"></i> Staff</a>
-            <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="bi bi-gear"></i> Settings</a>
+        @php
+            $user = auth()->user();
+            $navLinks = [];
+            foreach (config('rbac.modules', []) as $key => $definition) {
+                if ($user->isAdmin() || $user->canModule($key)) {
+                    $navLinks[] = ['key' => $key, 'label' => $definition['label'], 'icon' => $definition['icon'], 'route' => $key];
+                }
+            }
+            $navAdminLinks = [];
+            if ($user->isAdmin()) {
+                foreach (config('rbac.admin_modules', []) as $key => $definition) {
+                    $navAdminLinks[] = ['key' => $key, 'label' => $definition['label'], 'icon' => $definition['icon'], 'route' => $key];
+                }
+            }
+        @endphp
+        @foreach($navLinks as $link)
+            @if($link['key'] === 'dashboard')
+                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @elseif($link['key'] === 'requests')
+                <a class="nav-link {{ request()->routeIs('requests.*') ? 'active' : '' }}" href="{{ route('requests.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @elseif($link['key'] === 'restaurant')
+                <a class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}" href="{{ route('restaurant.menu') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @elseif($link['key'] === 'notifications')
+                <a class="nav-link {{ request()->routeIs('notifications.*') ? 'active' : '' }}" href="{{ route('notifications.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @elseif($link['key'] === 'sms-logs')
+                <a class="nav-link {{ request()->routeIs('sms-logs.*') ? 'active' : '' }}" href="{{ route('sms-logs.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @else
+                <a class="nav-link {{ request()->routeIs($link['key'].'.*') ? 'active' : '' }}" href="{{ route($link['key'].'.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+            @endif
+        @endforeach
+        @if($user->isAdmin())
+            <hr style="border-color:rgba(255,255,255,.08);margin:8px 12px">
+            @foreach($navAdminLinks as $link)
+                @if($link['key'] === 'roles')
+                    <a class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+                @elseif($link['key'] === 'staff')
+                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+                @else
+                    <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="bi {{ $link['icon'] }}"></i> {{ $link['label'] }}</a>
+                @endif
+            @endforeach
         @endif
-        <a class="nav-link {{ request()->routeIs('sms-logs.*') ? 'active' : '' }}" href="{{ route('sms-logs.index') }}"><i class="bi bi-chat-dots"></i> SMS Log</a>
     </div>
-    <div class="sidebar-foot">Front Desk Console</div>
+    <div class="sidebar-foot">
+        @if($user->isAdmin())
+            Administrator · Full access
+        @else
+            {{ $user->accessRole?->name ?? 'Staff' }} account
+        @endif
+    </div>
 </div>
 
 <div class="main">

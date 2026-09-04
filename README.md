@@ -34,6 +34,7 @@ A full-stack hotel management system built with **Laravel 12**, **PHP 8.2**, and
 - **Restaurant**: manage the menu (name, category, price, availability toggle) and run the live order queue with status updates (pending / preparing / served / cancelled)
 - **Laundry**: housekeeping queue for guest laundry requests with status updates and estimated cost billing (pending / in progress / completed / cancelled)
 - Notifications center (in-app + email)
+- **Role-based access control**: admin defines reusable roles bundling module permissions (bookings, rooms, room types, guests, requests, restaurant, laundry, payments, amenities, SMS log) and assigns a role to each staff member, with optional per-staff module overrides. Sidebar and routes are filtered so staff only see/handle their granted modules.
 - SMS log viewer
 - Settings panel (hotel name, currency, contact info, SMTP)
 - User management (admin only)
@@ -113,6 +114,8 @@ php artisan bookings:release-unpaid
 | Admin | `admin@hotel.local`   | `password` |
 | Staff | `staff@hotel.local`   | `password` |
 
+The seeded `staff@hotel.local` account is assigned the **Front Desk** role (bookings, guests, rooms, payments). Seeded roles: Front Desk, Housekeeping, Restaurant, and Accountant.
+
 Seed data includes 3 room types, 12 rooms, 6 guests, 12 amenities, 14 restaurant menu items, and sample bookings/payments/requests/orders.
 
 ## Key Routes
@@ -141,6 +144,7 @@ Seed data includes 3 room types, 12 rooms, 6 guests, 12 amenities, 14 restaurant
 | `/restaurant/orders` | Restaurant order queue |
 | `/laundry` | Laundry requests |
 | `/amenities` | Amenities |
+| `/roles` | Roles & permissions (admin) |
 | `/notifications` | Notifications |
 | `/settings` | Settings (admin) |
 | `/users` | Users (admin) |
