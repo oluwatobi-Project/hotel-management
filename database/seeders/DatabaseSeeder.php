@@ -235,17 +235,56 @@ class DatabaseSeeder extends Seeder
         $rooms['401']->update(['status' => 'occupied']);
         $rooms['302']->update(['status' => 'cleaning']);
 
+        // Payments spread across the current and previous week so the revenue
+        // flow chart shows a lively curve and a meaningful week-over-week trend.
+        $today = now()->startOfDay();
+
+        // Previous week (comparison series on the chart).
         Payment::create([
             'receipt_no' => 'RCP-100001', 'booking_id' => $bookings[0]->id,
-            'amount' => 176, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDay()->subHours(3),
+            'amount' => 132, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(13)->addHours(10),
         ]);
         Payment::create([
             'receipt_no' => 'RCP-100002', 'booking_id' => $bookings[1]->id,
-            'amount' => 296, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(2),
+            'amount' => 210, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(11)->addHours(14),
         ]);
         Payment::create([
             'receipt_no' => 'RCP-100003', 'booking_id' => $bookings[2]->id,
-            'amount' => 288, 'method' => 'cash', 'status' => 'paid', 'paid_at' => $today->copy()->subDay(),
+            'amount' => 350, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(9)->addHours(9),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100004', 'booking_id' => $bookings[3]->id,
+            'amount' => 158, 'method' => 'cash', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(7)->addHours(16),
+        ]);
+
+        // Current week (primary series on the chart).
+        Payment::create([
+            'receipt_no' => 'RCP-100005', 'booking_id' => $bookings[0]->id,
+            'amount' => 176, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(6)->addHours(10),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100006', 'booking_id' => $bookings[1]->id,
+            'amount' => 296, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(5)->addHours(14),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100007', 'booking_id' => $bookings[2]->id,
+            'amount' => 288, 'method' => 'cash', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(4)->addHours(9),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100008', 'booking_id' => $bookings[0]->id,
+            'amount' => 90, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(3)->addHours(16),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100009', 'booking_id' => $bookings[3]->id,
+            'amount' => 148, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(2)->addHours(11),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100010', 'booking_id' => $bookings[2]->id,
+            'amount' => 240, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDay()->addHours(13),
+        ]);
+        Payment::create([
+            'receipt_no' => 'RCP-100011', 'booking_id' => $bookings[5]->id,
+            'amount' => 440, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->addHours(8),
         ]);
 
         RoomRequest::create([

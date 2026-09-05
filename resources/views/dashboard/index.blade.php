@@ -88,9 +88,33 @@
 
     <div class="col-lg-8">
         <div class="card h-100">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h6 class="fw-bold mb-0" style="color:var(--navy)">Revenue Flow — Last 7 Days</h6>
+                    <small class="text-muted">Collected payments, {{ \Carbon\Carbon::now()->subDays(6)->format('M j') }} – {{ \Carbon\Carbon::now()->format('M j, Y') }}</small>
+                </div>
+                <div class="text-end">
+                    <div class="h5 fw-bold mb-0" style="color:var(--navy)">{{ $settings['currency'] }}{{ number_format($weeklyRevenue, 2) }}</div>
+                    <small class="text-muted">this week
+                        @if($revenueChange !== null)
+                            <span class="fw-semibold {{ $revenueChange >= 0 ? 'text-success' : 'text-danger' }}">
+                                <i class="bi bi-{{ $revenueChange >= 0 ? 'arrow-up-right' : 'arrow-down-right' }}"></i>{{ $revenueChange >= 0 ? '+' : '' }}{{ $revenueChange }}%
+                            </span>
+                            <span class="text-muted">vs prior week</span>
+                        @endif
+                    </small>
+                </div>
+            </div>
             <div class="card-body">
-                <h6 class="fw-bold mb-3" style="color:var(--navy)">Revenue — Last 7 Days</h6>
-                <canvas id="revenueChart" height="120"></canvas>
+                <div style="position:relative;height:250px">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                @if($revenuePeak)
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top small text-muted">
+                        <span><i class="bi bi-trophy text-gold me-1"></i>Best day: <strong>{{ $revenuePeak['date'] }}</strong> — <span class="money">{{ $settings['currency'] }}{{ number_format($revenuePeak['amount'], 2) }}</span></span>
+                        <span class="d-none d-sm-inline">Previous week shown as the faint line below</span>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -177,32 +201,109 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const days = @json(array_keys($weeklyRevenue->toArray()));
-    const amounts = @json(array_values($weeklyRevenue->toArray()));
-    const labels = days.map(d => d.slice(5));
+    const series = @json($revenueSeries);
+    const currency = @json($settings['currency'] ?? '$');
+    const fmt = (v) => currency + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    new Chart(document.getElementById('revenueChart'), {
-        type: 'bar',
+    const labels = series.map(d => d.label);
+    const amounts = series.map(d => d.amount);
+    const previous = series.map(d => d.previous);
+
+    const gradient = (ctx, top, bottom) => {
+        const g = ctx.createLinearGradient(0, top, 0, bottom);
+        g.addColorStop(0, 'rgba(200,162,75,.42)');
+        g.addColorStop(1, 'rgba(200,162,75,.02)');
+        return g;
+    };
+
+    const chart = new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Revenue',
-                data: amounts,
-                backgroundColor: 'rgba(200,162,75,.35)',
-                borderColor: '#c8a24b',
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
+            datasets: [
+                {
+                    label: 'Previous week',
+                    data: previous,
+                    borderColor: 'rgba(140,155,175,.5)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    pointHitRadius: 12,
+                    fill: false,
+                    tension: .45,
+                    spanGaps: true
+                },
+                {
+                    label: 'Revenue',
+                    data: amounts,
+                    borderColor: '#c8a24b',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#c8a24b',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: .45,
+                    spanGaps: true,
+                    backgroundColor: (ctx) => {
+                        const { chart } = ctx;
+                        const { ctx: c, chartArea } = chart;
+                        if (!chartArea) return 'rgba(200,162,75,.1)';
+                        return gradient(c, chartArea.top, chartArea.bottom);
+                    }
+                }
+            ]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            animation: {
+                duration: 1400,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15,34,57,.95)',
+                    titleFont: { weight: '600' },
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        title: (items) => series[items[0].dataIndex]?.full || '',
+                        label: (item) => {
+                            if (item.datasetIndex === 0) return 'Previous week: ' + fmt(item.parsed.y);
+                            return 'Revenue: ' + fmt(item.parsed.y);
+                        }
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: true, grid: { color: '#eef1f5' } },
-                x: { grid: { display: false } }
+                y: {
+                    beginAtZero: true,
+                    grace: '10%',
+                    grid: { color: '#eef1f5' },
+                    border: { display: false },
+                    ticks: {
+                        maxTicksLimit: 5,
+                        callback: (v) => fmt(v).replace(/\.[0-9]{2}$/, '')
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { font: { weight: '600' } }
+                }
             }
         }
     });
+
+    // Re-draw with a slow "flowing" shimmer a moment after first paint.
+    setTimeout(() => {
+        if (chart) chart.update();
+    }, 400);
 });
 </script>
 @endpush
