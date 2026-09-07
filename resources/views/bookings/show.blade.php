@@ -17,20 +17,21 @@
     <div class="btn-row">
         @if($booking->status === 'reserved')
             <a href="{{ route('bookings.edit', $booking->id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
-            <form action="{{ route('bookings.check-in', $booking->id) }}" method="POST" class="d-inline">
-                @csrf
-                <button class="btn btn-success btn-sm"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
-            </form>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#checkinModal"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
+            <a href="{{ route('invoices.show', $booking->id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-text"></i> Invoice</a>
             <form action="{{ route('bookings.cancel', $booking->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this booking?')">
                 @csrf
                 <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Cancel</button>
             </form>
         @elseif($booking->status === 'checked_in')
             <button class="btn btn-gold btn-sm" data-bs-toggle="modal" data-bs-target="#checkoutModal"><i class="bi bi-box-arrow-right"></i> Check Out</button>
+            <a href="{{ route('invoices.show', $booking->id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-text"></i> Invoice</a>
             <form action="{{ route('bookings.cancel', $booking->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this booking?')">
                 @csrf
                 <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-lg"></i> Cancel</button>
             </form>
+        @else
+            <a href="{{ route('invoices.show', $booking->id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-text"></i> Invoice</a>
         @endif
         @if($booking->status !== 'checked_in')
             <form action="{{ route('bookings.destroy', $booking->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this booking?')">
@@ -182,6 +183,68 @@
     </div>
 </div>
 
+@if($booking->status === 'reserved')
+<div class="modal fade" id="checkinModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ route('bookings.check-in', $booking->id) }}" class="modal-content">
+            @csrf
+            <div class="modal-header">
+                <h5 class="modal-title">Check In — {{ $booking->guest->name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">{{ $booking->nights() }} night(s) rate</span>
+                    <span class="money">{{ $settings['currency'] }}{{ number_format($booking->total_amount + $booking->discount, 2) }}</span>
+                </div>
+                @if($booking->discount > 0)
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Discount</span>
+                        <span class="text-danger">-{{ $settings['currency'] }}{{ number_format($booking->discount, 2) }}</span>
+                    </div>
+                @endif
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Paid</span>
+                    <span class="fw-semibold text-success">{{ $settings['currency'] }}{{ number_format($paid, 2) }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                    <span class="fw-bold">Balance Due</span>
+                    <span class="fs-5 fw-bold {{ $booking->total_amount - $paid > 0 ? 'text-danger' : 'text-success' }}">{{ $settings['currency'] }}{{ number_format(max(0, $booking->total_amount - $paid), 2) }}</span>
+                </div>
+                @if($booking->total_amount - $paid > 0)
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Amount to Collect</label>
+                            <input type="number" name="amount" id="checkinAmount" class="form-control" step="0.01" min="0.01" max="{{ number_format(max(0, $booking->total_amount - $paid), 2, '.', '') }}" value="{{ number_format(max(0, $booking->total_amount - $paid), 2, '.', '') }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Payment Method</label>
+                            <select name="method" class="form-select" required>
+                                <option value="cash">Cash</option>
+                                <option value="card">Card</option>
+                                <option value="mobile">Mobile Payment</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-text">Collect all or part of the balance now; any remainder settles at check-out.</div>
+                @else
+                    <div class="alert alert-success mb-0 py-2"><i class="bi bi-check-circle me-2"></i>This booking is already paid in full.</div>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                @if($booking->total_amount - $paid > 0)
+                    <button type="submit" class="btn btn-outline-success"><i class="bi bi-box-arrow-in-right"></i> Check In, Settle Later</button>
+                    <button type="submit" name="collect_payment" value="1" class="btn btn-success"><i class="bi bi-cash-coin"></i> Collect &amp; Check In</button>
+                @else
+                    <button type="submit" class="btn btn-success"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
+                @endif
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 @if($booking->status === 'checked_in')
 <div class="modal fade" id="checkoutModal" tabindex="-1">
     <div class="modal-dialog">
@@ -199,9 +262,11 @@
                     </div>
                     <div class="col-6">
                         <label class="form-label small fw-semibold">Amount Due</label>
-                        <input type="text" class="form-control fw-bold" value="{{ $settings['currency'] }}{{ number_format($booking->total_amount - $paid, 2) }}" disabled>
+                        <input type="text" class="form-control fw-bold" value="{{ $settings['currency'] }}{{ number_format(max(0, $booking->total_amount - $paid), 2) }}" disabled>
                     </div>
-                    <div class="col-12">
+                </div>
+                @if($booking->total_amount - $paid > 0)
+                    <div class="mt-3">
                         <label class="form-label small fw-semibold">Payment Method</label>
                         <select name="method" class="form-select" required>
                             <option value="cash">Cash</option>
@@ -209,7 +274,9 @@
                             <option value="mobile">Mobile Payment</option>
                         </select>
                     </div>
-                </div>
+                @else
+                    <div class="alert alert-success mb-0 mt-3 py-2"><i class="bi bi-check-circle me-2"></i>This stay is already settled — checking out will just free the room.</div>
+                @endif
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>

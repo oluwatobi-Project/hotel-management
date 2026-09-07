@@ -42,16 +42,16 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $frontDeskRole = Role::firstOrCreate(
+        $frontDeskRole = Role::updateOrCreate(
             ['slug' => 'front-desk'],
             [
                 'name' => 'Front Desk',
-                'description' => 'Handles bookings, check-ins, guests and payments.',
-                'modules' => ['bookings', 'guests', 'rooms', 'payments'],
+                'description' => 'Handles bookings, check-ins, invoices, guests and payments.',
+                'modules' => ['bookings', 'guests', 'rooms', 'payments', 'invoices'],
             ]
         );
 
-        Role::firstOrCreate(
+        Role::updateOrCreate(
             ['slug' => 'housekeeping'],
             [
                 'name' => 'Housekeeping',
@@ -60,7 +60,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        Role::firstOrCreate(
+        Role::updateOrCreate(
             ['slug' => 'restaurant'],
             [
                 'name' => 'Restaurant',
@@ -69,12 +69,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        Role::firstOrCreate(
+        Role::updateOrCreate(
             ['slug' => 'accountant'],
             [
                 'name' => 'Accountant',
-                'description' => 'Handles payments and financial records.',
-                'modules' => ['payments', 'bookings', 'sms-logs'],
+                'description' => 'Handles payments, invoices and financial records.',
+                'modules' => ['payments', 'bookings', 'invoices', 'sms-logs'],
             ]
         );
 
@@ -237,55 +237,35 @@ class DatabaseSeeder extends Seeder
 
         // Payments spread across the current and previous week so the revenue
         // flow chart shows a lively curve and a meaningful week-over-week trend.
+        // Each booking is kept financially coherent: total paid never exceeds the
+        // booking total, and cancelled bookings carry no charge.
         $today = now()->startOfDay();
 
-        // Previous week (comparison series on the chart).
-        Payment::create([
-            'receipt_no' => 'RCP-100001', 'booking_id' => $bookings[0]->id,
-            'amount' => 132, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(13)->addHours(10),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100002', 'booking_id' => $bookings[1]->id,
-            'amount' => 210, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(11)->addHours(14),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100003', 'booking_id' => $bookings[2]->id,
-            'amount' => 350, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(9)->addHours(9),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100004', 'booking_id' => $bookings[3]->id,
-            'amount' => 158, 'method' => 'cash', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(7)->addHours(16),
-        ]);
+        $payments = [
+            // Previous week (comparison series on the chart).
+            ['RCP-100001', 2, 200, 'card', 12, 9],   // Chen Hao (checked in) — advance
+            ['RCP-100002', 1, 296, 'mobile', 10, 14], // Li Na (checked in) — advance
+            ['RCP-100003', 2, 150, 'cash', 8, 16],   // Chen Hao (checked in)
+            // Current week (primary series on the chart).
+            ['RCP-100004', 2, 120, 'card', 6, 10],   // Chen Hao (checked in)
+            ['RCP-100005', 2, 180, 'mobile', 5, 14], // Chen Hao (checked in)
+            ['RCP-100006', 2, 90, 'cash', 4, 9],     // Chen Hao (checked in)
+            ['RCP-100007', 1, 150, 'card', 3, 16],   // Li Na (checked in) — check-in settlement
+            ['RCP-100008', 1, 146, 'mobile', 2, 11], // Li Na (checked in) — paid in full
+            ['RCP-100009', 2, 200, 'card', 1, 13],   // Chen Hao (checked in)
+            ['RCP-100010', 0, 176, 'mobile', 0, 8],  // Zhang Wei (checked out) — final settlement
+        ];
 
-        // Current week (primary series on the chart).
-        Payment::create([
-            'receipt_no' => 'RCP-100005', 'booking_id' => $bookings[0]->id,
-            'amount' => 176, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(6)->addHours(10),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100006', 'booking_id' => $bookings[1]->id,
-            'amount' => 296, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(5)->addHours(14),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100007', 'booking_id' => $bookings[2]->id,
-            'amount' => 288, 'method' => 'cash', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(4)->addHours(9),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100008', 'booking_id' => $bookings[0]->id,
-            'amount' => 90, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(3)->addHours(16),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100009', 'booking_id' => $bookings[3]->id,
-            'amount' => 148, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->subDays(2)->addHours(11),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100010', 'booking_id' => $bookings[2]->id,
-            'amount' => 240, 'method' => 'card', 'status' => 'paid', 'paid_at' => $today->copy()->subDay()->addHours(13),
-        ]);
-        Payment::create([
-            'receipt_no' => 'RCP-100011', 'booking_id' => $bookings[5]->id,
-            'amount' => 440, 'method' => 'mobile', 'status' => 'paid', 'paid_at' => $today->copy()->addHours(8),
-        ]);
+        foreach ($payments as [$receipt, $bookingIndex, $amount, $method, $daysAgo, $hour]) {
+            Payment::create([
+                'receipt_no' => $receipt,
+                'booking_id' => $bookings[$bookingIndex]->id,
+                'amount' => $amount,
+                'method' => $method,
+                'status' => 'paid',
+                'paid_at' => $today->copy()->subDays($daysAgo)->addHours($hour),
+            ]);
+        }
 
         RoomRequest::create([
             'booking_id' => $bookings[1]->id, 'room_id' => $rooms['202']->id, 'guest_id' => $guests[1]->id,

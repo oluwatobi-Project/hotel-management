@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Mail\BookingConfirmationMail;
+use App\Mail\CheckedInMail;
 use App\Mail\CheckoutReceiptMail;
+use App\Mail\PaymentReceiptMail;
 use App\Models\AppNotification;
 use App\Models\Booking;
 use App\Models\Payment;
@@ -52,31 +54,58 @@ class BookingNotifier
         );
 
         $this->notifyStaff('Guest checked in', $message, 'info', route('bookings.show', $booking->id));
+        $this->emailGuest(
+            $booking,
+            new CheckedInMail($booking),
+            "Check-in confirmation {$booking->booking_ref}"
+        );
         $this->smsGuest(
             $booking,
             "Welcome, {$booking->guest->name}! You have checked in to room {$booking->room->room_number} at Grand Horizon Hotel. Enjoy your stay."
         );
     }
 
-    public function notifyCheckedOut(Booking $booking, Payment $payment): void
+    /**
+     * Email the guest a receipt whenever a payment is recorded against a booking.
+     */
+    public function notifyPaymentReceived(Booking $booking, Payment $payment, ?string $context = null): void
     {
-        $message = sprintf(
-            '%s checked out from room %s. Payment of %s received (%s).',
-            $booking->guest->name,
-            $booking->room->room_number,
-            number_format($payment->amount, 2),
-            $payment->method
+        $this->emailGuest(
+            $booking,
+            new PaymentReceiptMail($booking, $payment, $context),
+            "Payment receipt {$payment->receipt_no} — Grand Horizon Hotel"
         );
+    }
+
+    public function notifyCheckedOut(Booking $booking, ?Payment $payment = null): void
+    {
+        $message = $payment
+            ? sprintf(
+                '%s checked out from room %s. Payment of %s received (%s).',
+                $booking->guest->name,
+                $booking->room->room_number,
+                number_format($payment->amount, 2),
+                $payment->method
+            )
+            : sprintf(
+                '%s checked out from room %s. Balance was already settled.',
+                $booking->guest->name,
+                $booking->room->room_number
+            );
 
         $this->notifyStaff('Guest checked out', $message, 'warning', route('bookings.show', $booking->id));
         $this->emailGuest(
             $booking,
             new CheckoutReceiptMail($booking, $payment),
-            "Your receipt {$payment->receipt_no} — Grand Horizon Hotel"
+            $payment
+                ? "Your receipt {$payment->receipt_no} — Grand Horizon Hotel"
+                : "Your check-out summary {$booking->booking_ref} — Grand Horizon Hotel"
         );
         $this->smsGuest(
             $booking,
-            "Dear {$booking->guest->name}, thank you for staying with us! Receipt {$payment->receipt_no} for {$payment->amount} has been emailed to you. We look forward to hosting you again."
+            $payment
+                ? "Dear {$booking->guest->name}, thank you for staying with us! Receipt {$payment->receipt_no} for {$payment->amount} has been emailed to you. We look forward to hosting you again."
+                : "Dear {$booking->guest->name}, thank you for staying with us! Your stay at Grand Horizon Hotel has been settled in full. We look forward to hosting you again."
         );
     }
 

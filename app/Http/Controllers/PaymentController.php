@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Services\BookingNotifier;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -37,14 +38,14 @@ class PaymentController extends Controller
             'method' => ['required', 'in:'.implode(',', Payment::METHODS)],
         ]);
 
-        $booking = Booking::findOrFail($data['booking_id']);
+        $booking = Booking::with('payments')->findOrFail($data['booking_id']);
         $paid = $booking->payments()->where('status', 'paid')->sum('amount');
 
         if ($paid + $data['amount'] > $booking->total_amount) {
             return back()->with('error', 'Payment exceeds the booking total.');
         }
 
-        Payment::create([
+        $payment = Payment::create([
             'receipt_no' => Payment::generateReceiptNo(),
             'booking_id' => $booking->id,
             'amount' => $data['amount'],
@@ -53,7 +54,9 @@ class PaymentController extends Controller
             'paid_at' => now(),
         ]);
 
-        return back()->with('success', 'Payment recorded.');
+        app(BookingNotifier::class)->notifyPaymentReceived($booking, $payment, 'Payment recorded at the front desk.');
+
+        return back()->with('success', "Payment recorded. Receipt {$payment->receipt_no} emailed to guest.");
     }
 
     public function refund(Payment $payment)

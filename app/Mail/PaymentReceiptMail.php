@@ -10,27 +10,25 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class CheckoutReceiptMail extends Mailable
+class PaymentReceiptMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Booking $booking, public ?Payment $payment = null)
+    public function __construct(public Booking $booking, public Payment $payment, public ?string $context = null)
     {
     }
 
     public function envelope(): Envelope
     {
-        $subject = $this->payment
-            ? 'Receipt '.$this->payment->receipt_no.' — Grand Horizon Hotel'
-            : 'Check-out summary '.$this->booking->booking_ref.' — Grand Horizon Hotel';
-
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: 'Payment receipt '.$this->payment->receipt_no.' — Grand Horizon Hotel',
+        );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.checkout-receipt',
+            markdown: 'emails.payment-receipt',
         );
     }
 }

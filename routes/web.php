@@ -5,6 +5,7 @@ use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuestController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LaundryController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\NotificationController;
@@ -80,6 +81,9 @@ Route::middleware(['auth', 'module'])->group(function () {
     Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
     Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
     Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{booking}', [InvoiceController::class, 'show'])->name('invoices.show');
 
     Route::get('/requests', [RoomRequestController::class, 'index'])->name('requests.index');
     Route::post('/requests', [RoomRequestController::class, 'store'])->name('requests.store');

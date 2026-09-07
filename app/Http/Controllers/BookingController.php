@@ -120,10 +120,38 @@ class BookingController extends Controller
             ->with('success', 'Booking updated.');
     }
 
-    public function checkIn(Booking $booking, BookingNotifier $notifier)
+    public function checkIn(Request $request, Booking $booking, BookingNotifier $notifier)
     {
         if ($booking->status !== 'reserved') {
             return back()->with('error', 'Only reserved bookings can be checked in.');
+        }
+
+        $payment = null;
+
+        if ($request->boolean('collect_payment')) {
+            $data = $request->validate([
+                'amount' => ['required', 'numeric', 'min:0.01'],
+                'method' => ['required', 'in:'.implode(',', Payment::METHODS)],
+            ]);
+
+            $outstanding = $booking->outstandingAmount();
+
+            if ($data['amount'] > $outstanding + 0.001) {
+                throw ValidationException::withMessages([
+                    'amount' => "Amount cannot exceed the outstanding balance of {$outstanding}.",
+                ]);
+            }
+
+            $payment = Payment::create([
+                'receipt_no' => Payment::generateReceiptNo(),
+                'booking_id' => $booking->id,
+                'amount' => $data['amount'],
+                'method' => $data['method'],
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+
+            $notifier->notifyPaymentReceived($booking, $payment, 'Payment collected at check-in.');
         }
 
         $booking->update(['status' => 'checked_in']);
@@ -131,7 +159,11 @@ class BookingController extends Controller
 
         $notifier->notifyCheckedIn($booking);
 
-        return back()->with('success', "{$booking->guest->name} has checked in.");
+        $message = $payment
+            ? "{$booking->guest->name} checked in. Payment of {$payment->amount} ({$payment->method}) collected — receipt {$payment->receipt_no} emailed to guest."
+            : "{$booking->guest->name} has checked in.";
+
+        return back()->with('success', $message);
     }
 
     public function checkOut(Request $request, Booking $booking, BookingNotifier $notifier)
@@ -140,25 +172,34 @@ class BookingController extends Controller
             return back()->with('error', 'Only checked-in bookings can be checked out.');
         }
 
-        $data = $request->validate([
-            'method' => ['required', 'in:'.implode(',', Payment::METHODS)],
-        ]);
+        $payment = null;
+        $due = $booking->outstandingAmount();
 
-        $payment = Payment::create([
-            'receipt_no' => Payment::generateReceiptNo(),
-            'booking_id' => $booking->id,
-            'amount' => $booking->total_amount,
-            'method' => $data['method'],
-            'status' => 'paid',
-            'paid_at' => now(),
-        ]);
+        if ($due > 0) {
+            $data = $request->validate([
+                'method' => ['required', 'in:'.implode(',', Payment::METHODS)],
+            ]);
+
+            $payment = Payment::create([
+                'receipt_no' => Payment::generateReceiptNo(),
+                'booking_id' => $booking->id,
+                'amount' => $due,
+                'method' => $data['method'],
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+        }
 
         $booking->update(['status' => 'checked_out']);
         $booking->room()->update(['status' => 'available']);
 
         $notifier->notifyCheckedOut($booking, $payment);
 
-        return back()->with('success', "Checked out. Receipt {$payment->receipt_no} generated and sent to guest.");
+        $message = $payment
+            ? "Checked out. Outstanding balance of {$payment->amount} settled — receipt {$payment->receipt_no} emailed to guest."
+            : "Checked out. Balance was already settled — check-out summary emailed to guest.";
+
+        return back()->with('success', $message);
     }
 
     public function cancel(Booking $booking, BookingNotifier $notifier)

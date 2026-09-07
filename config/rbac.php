@@ -59,6 +59,11 @@ return [
             'icon' => 'bi-credit-card',
             'routes' => ['payments.*'],
         ],
+        'invoices' => [
+            'label' => 'Invoices',
+            'icon' => 'bi-file-earmark-text',
+            'routes' => ['invoices.*'],
+        ],
         'amenities' => [
             'label' => 'Amenities',
             'icon' => 'bi-stars',

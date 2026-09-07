@@ -28,13 +28,17 @@ A full-stack hotel management system built with **Laravel 12**, **PHP 8.2**, and
   - **Amenities**: manage a reusable library of amenities (icon + description) and attach them to each room type
 - Guest management
 - Booking management: create, edit, cancel, check-in, check-out with payment collection
+  - **Pay at check-in**: the check-in dialog shows the balance and lets the desk collect all or part of it (cash / card / mobile) before checking the guest in, or simply check in and settle at check-out
+  - **Balance-aware check-out**: only the outstanding balance is settled (no double-charging); fully pre-paid stays check out with a summary instead
 - Date-overlap conflict detection to prevent double-booking
-- Payments with receipts and refunds
+- Payments with receipts, refunds, and emailed receipts
+- **Invoices**: dedicated module listing bookings filterable by status — each opens a status-aware, printable invoice (Reserved = proforma with balance due, Checked-in = stay statement, Checked-out = settled tax invoice, Cancelled = no-charge record)
 - In-room service requests queue (pending / in progress / completed)
 - **Restaurant**: manage the menu (name, category, price, availability toggle) and run the live order queue with status updates (pending / preparing / served / cancelled)
 - **Laundry**: housekeeping queue for guest laundry requests with status updates and estimated cost billing (pending / in progress / completed / cancelled)
 - Notifications center (in-app + email)
-- **Role-based access control**: admin defines reusable roles bundling module permissions (bookings, rooms, room types, guests, requests, restaurant, laundry, payments, amenities, SMS log) and assigns a role to each staff member, with optional per-staff module overrides. Sidebar and routes are filtered so staff only see/handle their granted modules.
+- Guest emails on every lifecycle event: booking confirmation, check-in confirmation, payment receipt, and check-out receipt / summary
+- **Role-based access control**: admin defines reusable roles bundling module permissions (bookings, rooms, room types, guests, requests, restaurant, laundry, payments, invoices, amenities, SMS log) and assigns a role to each staff member, with optional per-staff module overrides. Sidebar and routes are filtered so staff only see/handle their granted modules.
 - SMS log viewer
 - Settings panel (hotel name, currency, contact info, SMTP)
 - User management (admin only)
@@ -139,6 +143,7 @@ Seed data includes 3 room types, 12 rooms, 6 guests, 12 amenities, 14 restaurant
 | `/guests` | Guests |
 | `/bookings` | Bookings |
 | `/payments` | Payments |
+| `/invoices` | Invoices (status-aware, printable) |
 | `/requests` | Room requests |
 | `/restaurant/menu` | Restaurant menu |
 | `/restaurant/orders` | Restaurant order queue |
@@ -156,6 +161,7 @@ app/Console/Commands/ReleaseUnpaidBookings.php   # 24h auto-release
 app/Http/Controllers/PublicSiteController.php    # public site pages
 app/Http/Controllers/PublicBookingController.php # online booking + portal
 app/Http/Controllers/BookingController.php       # front-desk booking ops
+app/Http/Controllers/InvoiceController.php       # status-aware invoice generation
 app/Mail/                                       # email templates
 app/Services/BookingNotifier.php                # notifications + email + SMS
 app/Services/SmsService.php                     # SMS provider (log)

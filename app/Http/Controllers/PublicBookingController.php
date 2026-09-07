@@ -252,6 +252,8 @@ class PublicBookingController extends Controller
             'paid_at' => now(),
         ]);
 
+        $notifier->notifyPaymentReceived($booking, $payment, 'Payment received for your booking.');
+
         AppNotification::sendToAll(
             'Online payment received',
             sprintf('Payment of %s received for booking %s (%s).', $data['amount'], $booking->booking_ref, $data['method']),
