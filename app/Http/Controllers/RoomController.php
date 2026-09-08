@@ -37,9 +37,9 @@ class RoomController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        Room::create($data);
+        $room = Room::create($data);
 
-        return back()->with('success', 'Room added.');
+        return $this->respond($request, $room, "Room {$room->room_number} added.");
     }
 
     public function update(Request $request, Room $room)
@@ -54,18 +54,18 @@ class RoomController extends Controller
 
         $room->update($data);
 
-        return back()->with('success', 'Room updated.');
+        return $this->respond($request, $room, "Room {$room->room_number} updated.");
     }
 
-    public function destroy(Room $room)
+    public function destroy(Request $request, Room $room)
     {
         if ($room->bookings()->whereIn('status', ['reserved', 'checked_in'])->exists()) {
-            return back()->with('error', 'Cannot delete a room with active bookings.');
+            return $this->respond($request, null, "Cannot delete room {$room->room_number} with active bookings.", 'error');
         }
 
         $room->delete();
 
-        return back()->with('success', 'Room deleted.');
+        return $this->respond($request, null, "Room {$room->room_number} deleted.");
     }
 
     public function setStatus(Request $request, Room $room)
@@ -76,6 +76,19 @@ class RoomController extends Controller
 
         $room->update($data);
 
-        return back()->with('success', "Room {$room->room_number} marked as {$data['status']}.");
+        return $this->respond($request, $room, "Room {$room->room_number} marked as {$data['status']}.");
+    }
+
+    protected function respond(Request $request, ?Room $room, string $message, string $level = 'success')
+    {
+        if ($request->wantsJson() || $request->hasHeader('X-Requested-With')) {
+            return response()->json([
+                'success' => $level === 'success',
+                'message' => $message,
+                'room' => $room ? $room->fresh()->load('roomType') : null,
+            ], $level === 'success' ? 200 : 422);
+        }
+
+        return back()->with($level, $message);
     }
 }

@@ -4,6 +4,7 @@
 @section('page-title', 'Rooms')
 
 @section('content')
+<div id="roomAlert"></div>
 <div class="card">
     <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <div class="d-flex gap-2">
@@ -46,11 +47,9 @@
                                     @foreach($statuses as $status)
                                         @if($status !== $room->status)
                                             <li>
-                                                <form action="{{ route('rooms.status', $room->id) }}" method="POST">
-                                                    @csrf @method('PUT')
-                                                    <input type="hidden" name="status" value="{{ $status }}">
-                                                    <button class="dropdown-item" type="submit">Mark {{ ucfirst($status) }}</button>
-                                                </form>
+                                                <button type="button" class="dropdown-item" onclick="setRoomStatus('{{ $room->id }}', '{{ $status }}', '{{ $room->room_number }}')">
+                                                    Mark {{ ucfirst($status) }}
+                                                </button>
                                             </li>
                                         @endif
                                     @endforeach
@@ -59,10 +58,9 @@
                             <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#roomModal" onclick="fillRoomForm({!! $room->toJson() !!})">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <form action="{{ route('rooms.destroy', $room->id) }}" method="POST" onsubmit="return confirm('Delete room {{ $room->room_number }}?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
-                            </form>
+                            <button class="btn btn-outline-danger btn-sm" data-id="{{ $room->id }}" data-number="{{ $room->room_number }}" onclick="deleteRoom(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -75,7 +73,7 @@
 
 <div class="modal fade" id="roomModal" tabindex="-1">
     <div class="modal-dialog">
-        <form id="roomForm" method="POST" action="{{ route('rooms.store') }}" class="modal-content">
+        <form id="roomForm" method="POST" class="modal-content">
             @csrf
             <input type="hidden" name="_method" value="POST" id="roomMethod">
             <div class="modal-header">
@@ -116,7 +114,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="submit" class="btn btn-primary" id="roomSubmitBtn">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="roomSpinner"></span>Save
+                </button>
             </div>
         </form>
     </div>
@@ -125,15 +125,27 @@
 
 @push('scripts')
 <script>
+function showRoomAlert(type, message) {
+    const el = document.getElementById('roomAlert');
+    el.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { el.innerHTML = ''; }, 5000);
+}
+
 function resetRoomForm() {
     document.getElementById('roomForm').reset();
-    document.getElementById('roomForm').action = "{{ route('rooms.store') }}";
+    document.getElementById('roomForm').removeAttribute('data-id');
     document.getElementById('roomMethod').value = 'POST';
     document.getElementById('roomModalTitle').textContent = 'Add Room';
 }
+
 function fillRoomForm(r) {
     resetRoomForm();
-    document.getElementById('roomForm').action = "/rooms/" + r.id;
+    document.getElementById('roomForm').setAttribute('data-id', r.id);
     document.getElementById('roomMethod').value = 'PUT';
     document.getElementById('roomModalTitle').textContent = 'Edit Room ' + r.room_number;
     document.getElementById('roomNumber').value = r.room_number;
@@ -141,6 +153,75 @@ function fillRoomForm(r) {
     document.getElementById('roomType').value = r.room_type_id;
     document.getElementById('roomStatus').value = r.status;
     document.getElementById('roomNotes').value = r.notes || '';
+}
+
+const csrfToken = () => document.querySelector('meta[name="csrf-token"]').content;
+
+document.getElementById('roomForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const id = this.getAttribute('data-id');
+    const url = id ? '/rooms/' + id : '/rooms';
+    const method = id ? 'PUT' : 'POST';
+
+    const formData = new FormData(this);
+    formData.set('_method', method);
+
+    const btn = document.getElementById('roomSubmitBtn');
+    const spinner = document.getElementById('roomSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrfToken(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        body: formData
+    })
+    .then(async res => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+    .then(({ ok, data }) => {
+        if (ok) {
+            bootstrap.Modal.getInstance(document.getElementById('roomModal')).hide();
+            showRoomAlert('success', data.message || 'Room saved.');
+            setTimeout(() => window.location.reload(), 600);
+        } else {
+            const msg = data.message || 'Could not save. Please check the form.';
+            showRoomAlert('danger', msg);
+        }
+    })
+    .catch(() => showRoomAlert('danger', 'Network error while saving.'))
+    .finally(() => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+});
+
+function deleteRoom(btn) {
+    if (!confirm('Delete room ' + btn.dataset.number + '?')) return;
+    fetch('/rooms/' + btn.dataset.id, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrfToken(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        body: new URLSearchParams({ _method: 'DELETE' })
+    })
+    .then(async res => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+    .then(({ ok, data }) => {
+        showRoomAlert(ok ? 'success' : 'danger', data.message || (ok ? 'Room deleted.' : 'Could not delete room.'));
+        if (ok) setTimeout(() => window.location.reload(), 600);
+    })
+    .catch(() => showRoomAlert('danger', 'Network error while deleting.'));
+}
+
+function setRoomStatus(id, status, number) {
+    fetch('/rooms/' + id + '/status', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': csrfToken(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        body: new URLSearchParams({ _method: 'PUT', status: status })
+    })
+    .then(async res => ({ ok: res.ok, data: await res.json().catch(() => ({})) }))
+    .then(({ ok, data }) => {
+        showRoomAlert(ok ? 'success' : 'danger', data.message || (ok ? 'Room ' + number + ' updated.' : 'Could not update room.'));
+        if (ok) setTimeout(() => window.location.reload(), 600);
+    })
+    .catch(() => showRoomAlert('danger', 'Network error while updating status.'));
 }
 </script>
 @endpush
