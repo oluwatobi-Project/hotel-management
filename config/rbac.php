@@ -80,6 +80,11 @@ return [
             'icon' => 'bi-chat-dots',
             'routes' => ['sms-logs.*', 'sms.test'],
         ],
+        'emails' => [
+            'label' => 'Email Log',
+            'icon' => 'bi-envelope-paper',
+            'routes' => ['emails.*'],
+        ],
     ],
 
     /*

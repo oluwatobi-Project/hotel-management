@@ -10,13 +10,14 @@ use App\Models\AppNotification;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Mailable;
 
 class BookingNotifier
 {
-    public function __construct(protected SmsService $sms)
-    {
-    }
+    public function __construct(
+        protected SmsService $sms,
+        protected EmailService $email
+    ) {}
 
     /**
      * Notify staff (in-app) and the guest (email + SMS) about a booking event.
@@ -36,8 +37,7 @@ class BookingNotifier
         $this->notifyStaff('New booking received', $message, 'success', route('bookings.show', $booking->id));
         $this->emailGuest(
             $booking,
-            new BookingConfirmationMail($booking),
-            "Booking confirmation {$booking->booking_ref}"
+            new BookingConfirmationMail($booking)
         );
         $this->smsGuest(
             $booking,
@@ -56,8 +56,7 @@ class BookingNotifier
         $this->notifyStaff('Guest checked in', $message, 'info', route('bookings.show', $booking->id));
         $this->emailGuest(
             $booking,
-            new CheckedInMail($booking),
-            "Check-in confirmation {$booking->booking_ref}"
+            new CheckedInMail($booking)
         );
         $this->smsGuest(
             $booking,
@@ -72,8 +71,7 @@ class BookingNotifier
     {
         $this->emailGuest(
             $booking,
-            new PaymentReceiptMail($booking, $payment, $context),
-            "Payment receipt {$payment->receipt_no} — Grand Horizon Hotel"
+            new PaymentReceiptMail($booking, $payment, $context)
         );
     }
 
@@ -96,10 +94,7 @@ class BookingNotifier
         $this->notifyStaff('Guest checked out', $message, 'warning', route('bookings.show', $booking->id));
         $this->emailGuest(
             $booking,
-            new CheckoutReceiptMail($booking, $payment),
-            $payment
-                ? "Your receipt {$payment->receipt_no} — Grand Horizon Hotel"
-                : "Your check-out summary {$booking->booking_ref} — Grand Horizon Hotel"
+            new CheckoutReceiptMail($booking, $payment)
         );
         $this->smsGuest(
             $booking,
@@ -133,18 +128,9 @@ class BookingNotifier
         }
     }
 
-    protected function emailGuest(Booking $booking, mixed $mailable, string $subject): void
+    protected function emailGuest(Booking $booking, Mailable $mailable): void
     {
-        if (! $booking->guest->email) {
-            return;
-        }
-
-        try {
-            Mail::to($booking->guest->email)
-                ->send($mailable);
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        $this->email->send($booking, $mailable);
     }
 
     public function smsGuest(Booking $booking, string $message): void

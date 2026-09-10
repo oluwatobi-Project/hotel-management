@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Front Desk',
                 'description' => 'Handles bookings, check-ins, invoices, guests and payments.',
-                'modules' => ['bookings', 'guests', 'rooms', 'payments', 'invoices'],
+                'modules' => ['bookings', 'guests', 'rooms', 'payments', 'invoices', 'emails'],
             ]
         );
 
@@ -74,7 +74,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Accountant',
                 'description' => 'Handles payments, invoices and financial records.',
-                'modules' => ['payments', 'bookings', 'invoices', 'sms-logs'],
+                'modules' => ['payments', 'bookings', 'invoices', 'sms-logs', 'emails'],
             ]
         );
 

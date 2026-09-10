@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AmenityController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailLogController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LaundryController;
@@ -13,10 +14,10 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\RestaurantOrderController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\RoomRequestController;
 use App\Http\Controllers\RoomTypeController;
-use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\UserController;
@@ -97,6 +98,11 @@ Route::middleware(['auth', 'module'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 
     Route::get('/sms-logs', [SmsLogController::class, 'index'])->name('sms-logs.index');
+
+    Route::get('/email-logs', [EmailLogController::class, 'index'])->name('emails.index');
+    Route::get('/email-logs/{log}/preview', [EmailLogController::class, 'preview'])->name('emails.preview');
+    Route::post('/email-logs/{log}/resend', [EmailLogController::class, 'resend'])->name('emails.resend');
+    Route::post('/emails/test', [EmailLogController::class, 'test'])->name('emails.test');
 
     Route::get('/amenities', [AmenityController::class, 'index'])->name('amenities.index');
     Route::post('/amenities', [AmenityController::class, 'store'])->name('amenities.store');
